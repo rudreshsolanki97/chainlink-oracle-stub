@@ -22,5 +22,6 @@
   "homepage": "https://github.com/rudreshsolanki97/chainlink-oracle-stub#readme",
   "dependencies": {
     "chai": "^4.2.0",
+    "truffle": "^5.1.42"
   }
 }
