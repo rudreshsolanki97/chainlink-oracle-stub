@@ -14,10 +14,12 @@ In order to test run the following commands:
 
 ### Apothem
 
-1. Oracle Address - xdcc177333403c802db505044c6e3a928364f5fa9c2
-2. Link Token Address - xdc9eea5486b95ef892194cf37bb3c0d0836743e2e8
+1. Oracle Address - xdc5ee4ba477eb7a034426de7daea41410880c84d69
+2. Link Token Address - xdc8d2e1dff891a93e342de290f0c8196570c3931fd
 3. Owner address - xdc7d831bc9b77d1d5f60e68dcc174f313f575ca1c4
-4. Node Operator Address - 0x76042568737286aE00B63fCCe14F5ed3D6917A01
+4. Node Operator Address ( Simple ) - 0xe98f83692FDbD667c348f17AfBb1357E6D281B17
+5. Pointer Address - xdc6ed3cdeea5849c534fda3c7a1dfef817204c11e2
+6. TestClient - xdcefd88962be8a0451e07d44b9eb36d6116cc20c2e
 
 ## TODO
 
