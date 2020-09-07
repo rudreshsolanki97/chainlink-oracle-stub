@@ -10,6 +10,15 @@ In order to test run the following commands:
 1. `npm i`
 2. `truffle test`
 
+## About Setup
+
+1. First step is to deploy the required contracts like Oracle, Pointer, Link token.
+2. By following the instructions from [chainlink doc](https://docs.chain.link/docs/node-operator-overview) run a local chainlink node with PostgreSQL db.
+3. Give the address of chainlink node required permissions in the oracle.
+4. In order to fulfill custom requests, run an application which listens for incoming traffic at a specific port. 
+5. Create a bridge to this application from the chainlink node dashboard & generate custom jobs using the generated bridge as a task.
+6. Fund the chainlink node address with XDC so the node address can fulfill the custom requests.
+
 ## Deployed At
 
 ### Apothem
