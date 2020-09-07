@@ -39,6 +39,14 @@ In order to test run the following commands:
 5. TestClient - 0xD0886Fd1c49a6616E6EE4dCd10A1e339B55c951F
 
 
+### Usage Flow
+
+1. A user, who wants to use services provided by the chainlink node identified by the job-id, will first have to deploy a client contract similar to [TestClient](https://explorer.apothem.network/addr/xdcefd88962be8a0451e07d44b9eb36d6116cc20c2e).
+2. The client contract's function needs to build a chainlink request with arguements of jobid and oracle address.
+  Here the oracle address is the address of the oracle which provides the services & jobid is the identification of the process/service that the oracle provides.
+3. The client contract needs to have some minimum amount of LINK token ( as per the charge of oracle ) 
+4. On submitting this chainlink request, the result will be passed as an arguement to the fulfill function specified while building the chainlink request when the operation completes.
+
 ## TODO
 
  - [ ] add more tests
