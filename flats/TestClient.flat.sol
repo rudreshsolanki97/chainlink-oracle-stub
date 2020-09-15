@@ -533,27 +533,6 @@ library Chainlink {
   }
 }
 
-// File: contracts/interface/LinkTokenInterface.sol
-
-pragma solidity ^0.4.24;
-
-interface LinkTokenInterface {
-  function allowance(address owner, address spender) external view returns (uint256 remaining);
-  function approve(address spender, uint256 value) external returns (bool success);
-  function balanceOf(address owner) external view returns (uint256 balance);
-  function decimals() external view returns (uint8 decimalPlaces);
-  function decreaseApproval(address spender, uint256 addedValue) external returns (bool success);
-  function increaseApproval(address spender, uint256 subtractedValue) external;
-  function name() external view returns (string tokenName);
-  function symbol() external view returns (string tokenSymbol);
-  function totalSupply() external view returns (uint256 totalTokensIssued);
-  function transfer(address to, uint256 value) external returns (bool success);
-  function transferAndCall(address to, uint256 value, bytes data) external returns (bool success);
-  function transferFrom(address from, address to, uint256 value) external returns (bool success);
-}
-
-// This is just ERC20 interface
-
 // File: contracts/interface/ChainlinkRequestInterface.sol
 
 pragma solidity ^0.4.24;
@@ -568,7 +547,7 @@ interface ChainlinkRequestInterface {
     uint256 nonce,
     uint256 version,
     bytes data
-  ) external;
+  ) external payable;
 
   function cancelOracleRequest(
     bytes32 requestId,
@@ -659,7 +638,6 @@ pragma solidity ^0.4.24;
 
 
 
-
 /**
  * @title The ChainlinkClient contract
  * @notice Contract writers can inherit this contract in order to create requests for the
@@ -669,17 +647,15 @@ contract ChainlinkClient {
   using Chainlink for Chainlink.Request;
   using SafeMath for uint256;
 
-  uint256 constant internal LINK = 10**18;
+  uint256 constant internal XDC = 10**18;
   uint256 constant private AMOUNT_OVERRIDE = 0;
   address constant private SENDER_OVERRIDE = 0x0;
   uint256 constant private ARGS_VERSION = 1;
   bytes32 constant private ENS_TOKEN_SUBNAME = keccak256("link");
   bytes32 constant private ENS_ORACLE_SUBNAME = keccak256("oracle");
-  address constant private LINK_TOKEN_POINTER = 0xad77be37f77f2a8a4d7ca38db5304ed3602296d7;
 
   ENSInterface private ens;
   bytes32 private ensNode;
-  LinkTokenInterface private link;
   ChainlinkRequestInterface private oracle;
   uint256 private requests = 1;
   mapping(bytes32 => address) private pendingRequests;
@@ -704,43 +680,6 @@ contract ChainlinkClient {
     return req.initialize(_specId, _callbackAddress, _callbackFunctionSignature);
   }
 
-  /**
-   * @notice Creates a Chainlink request to the stored oracle address
-   * @dev Calls `chainlinkRequestTo` with the stored oracle address
-   * @param _req The initialized Chainlink Request
-   * @param _payment The amount of LINK to send for the request
-   * @return The request ID
-   */
-  function sendChainlinkRequest(Chainlink.Request memory _req, uint256 _payment)
-    internal
-    returns (bytes32)
-  {
-    return sendChainlinkRequestTo(oracle, _req, _payment);
-  }
-
-  /**
-   * @notice Creates a Chainlink request to the specified oracle address
-   * @dev Generates and stores a request ID, increments the local nonce, and uses `transferAndCall` to
-   * send LINK which creates a request on the target oracle contract.
-   * Emits ChainlinkRequested event.
-   * @param _oracle The address of the oracle for the request
-   * @param _req The initialized Chainlink Request
-   * @param _payment The amount of LINK to send for the request
-   * @return The request ID
-   */
-  function sendChainlinkRequestTo(address _oracle, Chainlink.Request memory _req, uint256 _payment)
-    internal
-    returns (bytes32 requestId)
-  {
-    requestId = keccak256(abi.encodePacked(this, requests));
-    _req.nonce = requests;
-    pendingRequests[requestId] = _oracle;
-    emit ChainlinkRequested(requestId);
-    require(link.transferAndCall(_oracle, _payment, encodeRequest(_req)), "unable to transferAndCall to oracle");
-    requests += 1;
-
-    return requestId;
-  }
 
   /**
    * @notice Allows a request to be cancelled if it has not been fulfilled
@@ -775,34 +714,6 @@ contract ChainlinkClient {
   }
 
   /**
-   * @notice Sets the LINK token address
-   * @param _link The address of the LINK token contract
-   */
-  function setChainlinkToken(address _link) internal {
-    link = LinkTokenInterface(_link);
-  }
-
-  /**
-   * @notice Sets the Chainlink token address for the public
-   * network as given by the Pointer contract
-   */
-  function setPublicChainlinkToken() internal {
-    setChainlinkToken(PointerInterface(LINK_TOKEN_POINTER).getAddress());
-  }
-
-  /**
-   * @notice Retrieves the stored address of the LINK token
-   * @return The address of the LINK token
-   */
-  function chainlinkTokenAddress()
-    internal
-    view
-    returns (address)
-  {
-    return address(link);
-  }
-
-  /**
    * @notice Retrieves the stored address of the oracle contract
    * @return The address of the oracle contract
    */
@@ -827,22 +738,6 @@ contract ChainlinkClient {
     pendingRequests[_requestId] = _oracle;
   }
 
-  /**
-   * @notice Sets the stored oracle and LINK token contracts with the addresses resolved by ENS
-   * @dev Accounts for subnodes having different resolvers
-   * @param _ens The address of the ENS contract
-   * @param _node The ENS node hash
-   */
-  function useChainlinkWithENS(address _ens, bytes32 _node)
-    internal
-  {
-    ens = ENSInterface(_ens);
-    ensNode = _node;
-    bytes32 linkSubnode = keccak256(abi.encodePacked(ensNode, ENS_TOKEN_SUBNAME));
-    ENSResolver resolver = ENSResolver(ens.resolver(linkSubnode));
-    setChainlinkToken(resolver.addr(linkSubnode));
-    updateChainlinkOracleWithENS();
-  }
 
   /**
    * @notice Sets the stored oracle contract with the address resolved by ENS
@@ -993,108 +888,42 @@ pragma solidity 0.4.24;
  * local test networks
  */
 contract TestClient is ChainlinkClient, Ownable {
-    uint256 constant private ORACLE_PAYMENT = 1 * LINK;
+    uint256 constant private ORACLE_PAYMENT = 10 * XDC;
 
     uint256 public currentPrice;
     uint256 public currentEwtPrice;
     int256 public changeDay;
     bytes32 public lastMarket;
 
+    uint256 constant private ARGS_VERSION = 1;
+
     event RequestEwtPriceFulfilled(
         bytes32 indexed requestId,
         uint256 indexed price
     );
 
-    event RequestEthereumPriceFulfilled(
-        bytes32 indexed requestId,
-        uint256 indexed price
-    );
-
-    event RequestEthereumChangeFulfilled(
-        bytes32 indexed requestId,
-        int256 indexed change
-    );
-
-    event RequestEthereumLastMarket(
-        bytes32 indexed requestId,
-        bytes32 indexed market
-    );
-
     constructor() public Ownable() {
-        setPublicChainlinkToken();
-    }
-
-    function requestEthereumPrice(address _oracle, string _jobId)
-        public
-        onlyOwner
-    {
-        Chainlink.Request memory req = buildChainlinkRequest(
-            stringToBytes32(_jobId),
-            this,
-            this.fulfillEthereumPrice.selector
-        );
-        req.add("get", "https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD");
-        req.add("path", "USD");
-        req.addInt("times", 100);
-        sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
     }
 
     function requestEwtPrice(address _oracle, string _jobId)
         public
         onlyOwner
+        payable
     {
+        ChainlinkRequestInterface oracle = ChainlinkRequestInterface(_oracle);
+
         Chainlink.Request memory req = buildChainlinkRequest(
-            stringToBytes32(_jobId),
-            this,
-            this.fulfillEwtPrice.selector
-        );
+                    stringToBytes32(_jobId),
+                    this,
+                    this.fulfillEwtPrice.selector
+                );
         req.add("get", "https://api.liquid.com/products/560");
         req.add("path", "last_traded_price");
         req.addInt("times", 10000);
-        sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
+
+        oracle.oracleRequest.value(msg.value)(msg.sender, 1, stringToBytes32(_jobId), this, this.fulfillEwtPrice.selector,  req.nonce, ARGS_VERSION,req.buf.buf);
     }
 
-    function requestEthereumChange(address _oracle, string _jobId)
-        public
-        onlyOwner
-    {
-        Chainlink.Request memory req = buildChainlinkRequest(
-            stringToBytes32(_jobId),
-            this,
-            this.fulfillEthereumChange.selector
-        );
-        req.add("get", "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD");
-        req.add("path", "RAW.ETH.USD.CHANGEPCTDAY");
-        req.addInt("times", 1000000000);
-        sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
-    }
-
-    function requestEthereumLastMarket(address _oracle, string _jobId)
-        public
-        onlyOwner
-    {
-        Chainlink.Request memory req = buildChainlinkRequest(
-            stringToBytes32(_jobId),
-            this,
-            this.fulfillEthereumLastMarket.selector
-        );
-        req.add("get", "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD");
-        string[] memory path = new string[](4);
-        path[0] = "RAW";
-        path[1] = "ETH";
-        path[2] = "USD";
-        path[3] = "LASTMARKET";
-        req.addStringArray("path", path);
-        sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
-    }
-
-    function fulfillEthereumPrice(bytes32 _requestId, uint256 _price)
-        public
-        recordChainlinkFulfillment(_requestId)
-    {
-        emit RequestEthereumPriceFulfilled(_requestId, _price);
-        currentPrice = _price;
-    }
 
     function fulfillEwtPrice(bytes32 _requestId, uint256 _price)
         public
@@ -1104,36 +933,11 @@ contract TestClient is ChainlinkClient, Ownable {
         currentEwtPrice = _price;
     }
 
-    function fulfillEthereumChange(bytes32 _requestId, int256 _change)
-        public
-        recordChainlinkFulfillment(_requestId)
-    {
-        emit RequestEthereumChangeFulfilled(_requestId, _change);
-        changeDay = _change;
-    }
-
-    function fulfillEthereumLastMarket(bytes32 _requestId, bytes32 _market)
-        public
-        recordChainlinkFulfillment(_requestId)
-    {
-        emit RequestEthereumLastMarket(_requestId, _market);
-        lastMarket = _market;
-    }
-
-    function getChainlinkToken()
-        public
-        view
-        returns (address)
-    {
-        return chainlinkTokenAddress();
-    }
-
-    function withdrawLink()
+    function withdrawXDC()
         public
         onlyOwner
     {
-        LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
-        require(link.transfer(msg.sender, link.balanceOf(address(this))), "Unable to transfer");
+        address(msg.sender).transfer(address(this).balance);
     }
 
     function cancelRequest(

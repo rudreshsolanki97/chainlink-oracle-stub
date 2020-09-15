@@ -135,7 +135,7 @@ interface ChainlinkRequestInterface {
     uint256 nonce,
     uint256 version,
     bytes data
-  ) external;
+  ) external payable;
 
   function cancelOracleRequest(
     bytes32 requestId,
@@ -164,31 +164,9 @@ interface OracleInterface {
   function withdrawable() external view returns (uint256);
 }
 
-// File: contracts/interface/LinkTokenInterface.sol
-
-pragma solidity ^0.4.24;
-
-interface LinkTokenInterface {
-  function allowance(address owner, address spender) external view returns (uint256 remaining);
-  function approve(address spender, uint256 value) external returns (bool success);
-  function balanceOf(address owner) external view returns (uint256 balance);
-  function decimals() external view returns (uint8 decimalPlaces);
-  function decreaseApproval(address spender, uint256 addedValue) external returns (bool success);
-  function increaseApproval(address spender, uint256 subtractedValue) external;
-  function name() external view returns (string tokenName);
-  function symbol() external view returns (string tokenSymbol);
-  function totalSupply() external view returns (uint256 totalTokensIssued);
-  function transfer(address to, uint256 value) external returns (bool success);
-  function transferAndCall(address to, uint256 value, bytes data) external returns (bool success);
-  function transferFrom(address from, address to, uint256 value) external returns (bool success);
-}
-
-// This is just ERC20 interface
-
 // File: contracts/Oracle.sol
 
 pragma solidity 0.4.24;
-
 
 
 
@@ -210,7 +188,6 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
   uint256 constant private EXPECTED_REQUEST_WORDS = 2;
   uint256 constant private MINIMUM_REQUEST_LENGTH = SELECTOR_LENGTH + (32 * EXPECTED_REQUEST_WORDS);
 
-  LinkTokenInterface internal LinkToken;
   mapping(bytes32 => bytes32) private commitments;
   mapping(address => bool) private authorizedNodes;
   uint256 private withdrawableTokens = ONE_FOR_CONSISTENT_GAS_COST;
@@ -231,39 +208,7 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
     bytes32 indexed requestId
   );
 
-  /**
-   * @notice Deploy with the address of the LINK token
-   * @dev Sets the LinkToken address for the imported LinkTokenInterface
-   * @param _link The address of the LINK token
-   */
-  constructor(address _link) public Ownable() {
-    LinkToken = LinkTokenInterface(_link); // external but already deployed and unalterable
-  }
-
-  /**
-   * @notice Called when LINK is sent to the contract via `transferAndCall`
-   * @dev The data payload's first 2 words will be overwritten by the `_sender` and `_amount`
-   * values to ensure correctness. Calls oracleRequest.
-   * @param _sender Address of the sender
-   * @param _amount Amount of LINK sent (specified in wei)
-   * @param _data Payload of the transaction
-   */
-  function onTokenTransfer(
-    address _sender,
-    uint256 _amount,
-    bytes _data
-  )
-    public
-    onlyLINK
-    validRequestLength(_data)
-    permittedFunctionsForLINK(_data)
-  {
-    assembly { // solhint-disable-line no-inline-assembly
-      mstore(add(_data, 36), _sender) // ensure correct sender is passed
-      mstore(add(_data, 68), _amount) // ensure correct amount is passed
-    }
-    // solhint-disable-next-line avoid-low-level-calls
-    require(address(this).delegatecall(_data), "Unable to create request"); // calls oracleRequest
+  constructor() public Ownable() {
   }
 
   /**
@@ -290,8 +235,7 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
     bytes _data
   )
     external
-    onlyLINK
-    checkCallbackAddress(_callbackAddress)
+    payable
   {
     bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
     require(commitments[requestId] == 0, "Must use a unique ID");
@@ -382,21 +326,6 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
   }
 
   /**
-   * @notice Allows the node operator to withdraw earned LINK to a given address
-   * @dev The owner of the contract can be another wallet and does not have to be a Chainlink node
-   * @param _recipient The address to send the LINK token to
-   * @param _amount The amount to send (specified in wei)
-   */
-  function withdraw(address _recipient, uint256 _amount)
-    external
-    onlyOwner
-    hasAvailableFunds(_amount)
-  {
-    withdrawableTokens = withdrawableTokens.sub(_amount);
-    assert(LinkToken.transfer(_recipient, _amount));
-  }
-
-  /**
    * @notice Displays the amount of LINK that is available for the node operator to withdraw
    * @dev We use `ONE_FOR_CONSISTENT_GAS_COST` in place of 0 in storage
    * @return The amount of withdrawable LINK on the contract
@@ -405,6 +334,13 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
     return withdrawableTokens.sub(ONE_FOR_CONSISTENT_GAS_COST);
   }
   
+  function withdrawXDC() external onlyOwner {
+    address(msg.sender).transfer(address(this).balance);      
+  }
+  
+  function contractBalanceXDC() external view returns (uint) {
+      return address(this).balance;
+  }
   
 
   /**
@@ -437,7 +373,7 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
     delete commitments[_requestId];
     emit CancelOracleRequest(_requestId);
 
-    assert(LinkToken.transfer(msg.sender, _payment));
+    address(msg.sender).transfer(_payment);
   }
 
   // MODIFIERS
@@ -469,14 +405,6 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
   }
 
   /**
-   * @dev Reverts if not sent from the LINK token
-   */
-  modifier onlyLINK() {
-    require(msg.sender == address(LinkToken), "Must use LINK token");
-    _;
-  }
-
-  /**
    * @dev Reverts if the given data does not begin with the `oracleRequest` function selector
    * @param _data The data payload of the request
    */
@@ -489,14 +417,6 @@ contract Oracle is ChainlinkRequestInterface, OracleInterface, Ownable {
     _;
   }
 
-  /**
-   * @dev Reverts if the callback address is the LINK token
-   * @param _to The callback address
-   */
-  modifier checkCallbackAddress(address _to) {
-    require(_to != address(LinkToken), "Cannot callback to LINK");
-    _;
-  }
 
   /**
    * @dev Reverts if the given payload is less than needed to create a request

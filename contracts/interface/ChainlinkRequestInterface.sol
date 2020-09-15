@@ -10,7 +10,7 @@ interface ChainlinkRequestInterface {
     uint256 nonce,
     uint256 version,
     bytes data
-  ) external;
+  ) external payable;
 
   function cancelOracleRequest(
     bytes32 requestId,

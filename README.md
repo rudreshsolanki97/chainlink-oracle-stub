@@ -23,12 +23,10 @@ In order to test run the following commands:
 
 ### Apothem
 
-1. Oracle Address - [xdc5ee4ba477eb7a034426de7daea41410880c84d69](https://explorer.apothem.network/addr/xdc5ee4ba477eb7a034426de7daea41410880c84d69)
-2. Link Token Address - [xdc8d2e1dff891a93e342de290f0c8196570c3931fd](https://explorer.apothem.network/addr/xdc8d2e1dff891a93e342de290f0c8196570c3931fd)
-3. Owner address - [xdc7d831bc9b77d1d5f60e68dcc174f313f575ca1c4](https://explorer.apothem.network/addr/xdc7d831bc9b77d1d5f60e68dcc174f313f575ca1c4)
-4. Node Operator Address ( Simple ) - [0xe98f83692FDbD667c348f17AfBb1357E6D281B17](https://explorer.apothem.network/addr/0xe98f83692fdbd667c348f17afbb1357e6d281b17)
-5. Pointer Address - [xdc6ed3cdeea5849c534fda3c7a1dfef817204c11e2](https://explorer.apothem.network/addr/xdc6ed3cdeea5849c534fda3c7a1dfef817204c11e2)
-6. TestClient - [xdcefd88962be8a0451e07d44b9eb36d6116cc20c2e](https://explorer.apothem.network/addr/xdcefd88962be8a0451e07d44b9eb36d6116cc20c2e)
+1. Oracle Address - [xdca5a1e23792a445340a6da552f06bdbefeee256a8](https://explorer.apothem.network/addr/xdca5a1e23792a445340a6da552f06bdbefeee256a8)
+2. Owner address - [xdc7d831bc9b77d1d5f60e68dcc174f313f575ca1c4](https://explorer.apothem.network/addr/xdc7d831bc9b77d1d5f60e68dcc174f313f575ca1c4)
+3. Node Operator Address
+4. TestClient - [xdc69456105603be9d97ddf23192788363dbbbea2c4](https://explorer.apothem.network/addr/xdc69456105603be9d97ddf23192788363dbbbea2c4)
 
 ### XinFin Mainnet
 
