@@ -18,6 +18,7 @@ contract TestClient is ChainlinkClient, Ownable {
     bytes32 public lastMarket;
 
     uint256 constant private ARGS_VERSION = 1;
+    uint256 public req_nonce=100;
 
     event RequestEwtPriceFulfilled(
         bytes32 indexed requestId,
@@ -43,7 +44,7 @@ contract TestClient is ChainlinkClient, Ownable {
         req.add("path", "last_traded_price");
         req.addInt("times", 10000);
 
-        oracle.oracleRequest.value(msg.value)(msg.sender, 1, stringToBytes32(_jobId), this, this.fulfillEwtPrice.selector,  req.nonce, ARGS_VERSION,req.buf.buf);
+        oracle.oracleRequest.value(msg.value)(msg.sender, 1, stringToBytes32(_jobId), this, this.fulfillEwtPrice.selector,  ++req_nonce, ARGS_VERSION,req.buf.buf);
     }
 
 
